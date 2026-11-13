@@ -3,10 +3,11 @@ import ipaddress
 import logging
 import os
 import uuid
+from email.utils import formatdate
 
 from fastapi import FastAPI, Request
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, Response
 
 from app import db
 
@@ -20,8 +21,16 @@ CORS = {"Access-Control-Allow-Origin": "*"}
 MAX_BODY = int(os.getenv("PING_BODY_LIMIT", "10000"))  # = settings.PING_BODY_LIMIT
 
 
-def _text(body: str, status: int = 200) -> PlainTextResponse:
-    return PlainTextResponse(body, status_code=status, headers=CORS)
+def _text(body: str, status: int = 200) -> Response:
+    """Mismas cabeceras que la vista ping() de Django (tipo, CORS, caché, límite de cuerpo)."""
+    headers = {
+        **CORS,
+        "Ping-Body-Limit": str(MAX_BODY),
+        "Expires": formatdate(usegmt=True),
+        "Cache-Control": "max-age=0, no-cache, no-store, must-revalidate, private",
+    }
+    return Response(body, status_code=status, headers=headers,
+                    media_type="text/html; charset=utf-8")
 
 
 def parse_suffix(suffix):

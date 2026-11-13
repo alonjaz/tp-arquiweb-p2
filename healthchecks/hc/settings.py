@@ -68,7 +68,7 @@ def envsecret(s: str, default: str | None = None) -> str | None:
 
 SECRET_KEY = envsecret("SECRET_KEY", "---")
 METRICS_KEY = os.getenv("METRICS_KEY")
-DEBUG = envbool("DEBUG", "False")
+DEBUG = envbool("DEBUG", "True")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "healthchecks@example.org")
 SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL")
 USE_PAYMENTS = envbool("USE_PAYMENTS", "False")

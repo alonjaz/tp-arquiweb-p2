@@ -1,0 +1,410 @@
+openapi: 3.1.0
+info:
+  title: checks-svc
+  version: 1.0.0
+paths:
+  /healthz:
+    get:
+      summary: Healthz
+      operationId: healthz_healthz_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /readyz:
+    get:
+      summary: Readyz
+      operationId: readyz_readyz_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /metrics:
+    get:
+      summary: Metrics
+      operationId: metrics_metrics_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v3/checks/:
+    get:
+      summary: Api List Checks
+      operationId: api_list_checks_api_v3_checks__get
+      parameters:
+      - name: tag
+        in: query
+        required: false
+        schema:
+          type: string
+          title: Tag
+      - name: slug
+        in: query
+        required: false
+        schema:
+          type: string
+          title: Slug
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      summary: Api Create Check
+      operationId: api_create_check_api_v3_checks__post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckIn'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v3/checks/{code}:
+    get:
+      summary: Api Get Check
+      operationId: api_get_check_api_v3_checks__code__get
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Code
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      summary: Api Update Check Post
+      operationId: api_update_check_post_api_v3_checks__code__post
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      summary: Api Update Check Put
+      operationId: api_update_check_put_api_v3_checks__code__put
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      summary: Api Delete Check
+      operationId: api_delete_check_api_v3_checks__code__delete
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Code
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    CheckIn:
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 100
+          - type: 'null'
+          title: Name
+          default: ''
+        tags:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tags
+          default: ''
+        desc:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Desc
+          default: ''
+        timeout:
+          anyOf:
+          - type: integer
+            maximum: 31536000.0
+            minimum: 60.0
+          - type: 'null'
+          title: Timeout
+          default: 86400
+        grace:
+          anyOf:
+          - type: integer
+            maximum: 31536000.0
+            minimum: 60.0
+          - type: 'null'
+          title: Grace
+          default: 3600
+        schedule:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Schedule
+        tz:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tz
+          default: UTC
+        manual_resume:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Manual Resume
+          default: false
+        methods:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Methods
+          default: ''
+        channels:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Channels
+        unique:
+          anyOf:
+          - items: {}
+            type: array
+          - type: 'null'
+          title: Unique
+        start_kw:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Start Kw
+          default: ''
+        success_kw:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Success Kw
+          default: ''
+        failure_kw:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Failure Kw
+          default: ''
+        filter_subject:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Filter Subject
+          default: false
+        filter_body:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Filter Body
+          default: false
+      type: object
+      title: CheckIn
+    CheckUpdate:
+      properties:
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        tags:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tags
+        desc:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Desc
+        timeout:
+          anyOf:
+          - type: integer
+            maximum: 31536000.0
+            minimum: 60.0
+          - type: 'null'
+          title: Timeout
+        grace:
+          anyOf:
+          - type: integer
+            maximum: 31536000.0
+            minimum: 60.0
+          - type: 'null'
+          title: Grace
+        schedule:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Schedule
+        tz:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tz
+        manual_resume:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Manual Resume
+        methods:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Methods
+        channels:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Channels
+        start_kw:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Start Kw
+        success_kw:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Success Kw
+        failure_kw:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Failure Kw
+        filter_subject:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Filter Subject
+        filter_body:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Filter Body
+      type: object
+      title: CheckUpdate
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+

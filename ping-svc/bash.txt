@@ -1,8 +1,0 @@
-U2=b4179499-8c0d-49fa-9e31-87e031b29595
-curl -i http://127.0.0.1:8000/ping/$U2/start
-sleep 2
-curl -i http://127.0.0.1:8000/ping/$U2
-sudo -u postgres psql -d hc -c "select status,last_ping,last_start,last_duration,alert_after,n_pings from api_check where code='$U2';"
-sudo -u postgres psql -d hc -c "select n,kind,method,scheme,remote_addr from api_ping where owner_id=(select id from api_check where code='$U2') order by id desc limit 2;"
-curl -i http://127.0.0.1:8000/ping/$U2/fail
-sudo -u postgres psql -d hc -c "select old_status,new_status,reason from api_flip where owner_id=(select id from api_check where code='$U2') order by id desc limit 2;"

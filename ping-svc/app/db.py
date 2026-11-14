@@ -13,13 +13,10 @@ Dependencias externas (PyPI, las mismas que usa Healthchecks):
 import ipaddress
 import logging
 from datetime import datetime, timedelta, timezone
-
+import os
 from zoneinfo import ZoneInfo
 
 from psycopg_pool import ConnectionPool
-
-from app.config import settings
-from app.observability import request_id_var
 
 log = logging.getLogger("ping-svc")
 
@@ -33,10 +30,9 @@ def get_pool() -> ConnectionPool:
     global _pool
     if _pool is None:
         _pool = ConnectionPool(
-            conninfo=settings.database_url,
-            min_size=settings.db_pool_min,
-            max_size=settings.db_pool_max,
-            timeout=settings.db_connect_timeout,
+            conninfo=os.environ["DATABASE_URL"],
+            min_size=int(os.getenv("DB_POOL_MIN", "2")),
+            max_size=int(os.getenv("DB_POOL_MAX", "10")),
             open=True,
         )
     return _pool
@@ -105,13 +101,12 @@ def record_ping(code, action, exitstatus, scheme, remote_addr, method, ua, body,
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT id, project_id, status, kind, timeout, grace, schedule, tz,
-                          manual_resume, methods, filter_http_body, failure_kw, success_kw,
-                          start_kw, filter_default_fail, last_ping, last_start,
-                          last_start_rid, last_duration
+                          manual_resume, methods, filter_http_body, failure_kw,
+                          success_kw, start_kw, filter_default_fail,
+                          last_ping, last_start, last_start_rid, last_duration
                    FROM api_check WHERE code = %s FOR UPDATE""",
                 (code,),
             )
-
             row = cur.fetchone()
             if row is None:
                 return NOT_FOUND
@@ -128,7 +123,7 @@ def record_ping(code, action, exitstatus, scheme, remote_addr, method, ua, body,
             if methods == "POST" and method != "POST":
                 action = "ign"
             if action != "ign" and filter_http_body:
-                text = body.decode(errors="replace")
+                text = body.decode()
                 if failure_kw and match_keywords(text, failure_kw):
                     action = "fail"
                 elif success_kw and match_keywords(text, success_kw):

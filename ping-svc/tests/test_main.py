@@ -95,3 +95,39 @@ def test_exitstatus_over_255_is_400(monkeypatch):
 
 def test_remote_addr_strips_port():
     assert main.clean_remote_addr("1.2.3.4:5555, 9.9.9.9") == "1.2.3.4"
+
+
+def test_metrics_endpoint_expone_contador_y_histograma(monkeypatch):
+    monkeypatch.setattr(db, "record_ping", fake(db.OK))
+    client.get(f"/ping/{CODE}")
+    body = client.get("/metrics").text
+    assert "http_requests_total" in body
+    assert "http_request_duration_seconds_bucket" in body
+    assert 'route="/ping/{code}"' in body and 'status="200"' in body
+
+
+def test_request_id_se_propaga_en_la_respuesta(monkeypatch):
+    monkeypatch.setattr(db, "record_ping", fake(db.OK))
+    r = client.get(f"/ping/{CODE}", headers={"X-Request-ID": "abc-123"})
+    assert r.headers["x-request-id"] == "abc-123"
+
+
+def test_request_id_se_genera_si_falta_o_es_invalido(monkeypatch):
+    monkeypatch.setattr(db, "record_ping", fake(db.OK))
+    r1 = client.get(f"/ping/{CODE}")
+    r2 = client.get(f"/ping/{CODE}", headers={"X-Request-ID": "mal id!"})
+    assert uuid.UUID(r1.headers["x-request-id"])
+    assert r2.headers["x-request-id"] != "mal id!"
+
+
+def test_log_json_tiene_los_campos_requeridos():
+    import json, logging
+    from app.observability import JsonFormatter, request_id_var
+    tok = request_id_var.set("rid-1")
+    try:
+        rec = logging.LogRecord("ping-svc", logging.INFO, __file__, 1, "hola", None, None)
+        data = json.loads(JsonFormatter().format(rec))
+    finally:
+        request_id_var.reset(tok)
+    assert {"timestamp", "level", "service", "request_id", "message"} <= set(data)
+    assert data["request_id"] == "rid-1" and data["message"] == "hola"

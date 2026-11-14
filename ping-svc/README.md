@@ -28,28 +28,25 @@ sudo -u postgres psql -d <BD> -c '\d accounts_profile' -c '\d accounts_project' 
 #    Se asume: accounts_profile.user_id, accounts_project.owner_id, api_notification.owner_id/created
 ```
 
-## Etapa 0 – PostgreSQL accesible desde el contenedor (en la VM)
-PostgreSQL escucha solo en 127.0.0.1; el contenedor llega por la IP del puente Docker.
-```bash
-sudo nano /etc/postgresql/16/main/postgresql.conf
-#   listen_addresses = 'localhost,172.17.0.1'
-echo "host  <BD>  <USUARIO>  172.16.0.0/12  scram-sha-256" | sudo tee -a /etc/postgresql/16/main/pg_hba.conf
-sudo systemctl restart postgresql
-sudo ufw allow from 172.16.0.0/12 to any port 5432 proto tcp   # solo redes Docker
-sudo ss -lntp | grep 5432      # debe verse 127.0.0.1 y 172.17.0.1, NO 0.0.0.0
-```
-(El firewall sigue sin exponer 5432 a la red host-only.)
+## Etapa 0 – Conexión a PostgreSQL: MODO HOST (sin tocar PostgreSQL ni ufw)
+El contenedor usa la red de la VM (`--network host`), así que llega a PostgreSQL por
+`127.0.0.1:5432` igual que Gunicorn. Escucha solo en `127.0.0.1:8001` (HOST/PORT del `.env`);
+el 8000 ya lo ocupa Gunicorn.
+
+Trade-off a documentar en el informe: se pierde el aislamiento de red del contenedor
+a cambio de no abrir PostgreSQL a las redes Docker (superficie expuesta menor, P10).
 
 ## Ejecutar
 ```bash
 cd ping-svc
-cp .env.example .env && nano .env          # credenciales de local_settings.py
+cp .env.example .env && nano .env          # solo USUARIO, CLAVE y NOMBRE_BD
 docker build -t ping-svc:1.0.0 .
-docker run -d --name ping-svc --env-file .env --add-host host.docker.internal:host-gateway \
-  -p 127.0.0.1:8001:8000 --read-only --memory 256m ping-svc:1.0.0
+docker run -d --name ping-svc --network host --env-file .env \
+  --read-only --tmpfs /prom:rw,mode=1777 --memory 256m --restart unless-stopped ping-svc:1.0.0
 curl -i http://127.0.0.1:8001/readyz
 curl -i http://127.0.0.1:8001/ping/<UUID_DE_UN_CHECK>   # → 200 OK
 ```
+(Alternativa con red puente: exige configurar `listen_addresses`, `pg_hba.conf` y `ufw`; no recomendada.)
 
 ## Pruebas
 ```bash

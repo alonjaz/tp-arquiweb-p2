@@ -1,25 +1,28 @@
 """ping-svc: recepción de pings de Healthchecks (/ping/<uuid>)."""
 import ipaddress
 import logging
-import os
 import uuid
 from email.utils import formatdate
 
 from fastapi import FastAPI, Request
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import PlainTextResponse, Response
+from fastapi.responses import JSONResponse, Response
 
 from app import db
+from app.config import settings
+from app.observability import (setup_logging, observability_middleware,
+                               metrics_endpoint, request_id_var)
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-log = logging.getLogger("ping-svc")
+setup_logging()
+log = logging.getLogger(settings.service_name)
 
 app = FastAPI(title="ping-svc", docs_url=None, redoc_url=None)
+app.middleware("http")(observability_middleware)
+app.add_api_route("/metrics", metrics_endpoint, methods=["GET"], include_in_schema=False)
 
 METHODS = ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
 CORS = {"Access-Control-Allow-Origin": "*"}
-MAX_BODY = int(os.getenv("PING_BODY_LIMIT", "10000"))  # = settings.PING_BODY_LIMIT
-
+MAX_BODY = settings.ping_body_limit
 
 def _text(body: str, status: int = 200) -> Response:
     """Mismas cabeceras que la vista ping() de Django (tipo, CORS, caché, límite de cuerpo)."""
@@ -64,10 +67,10 @@ def healthz():
 def readyz():
     try:
         db.ping_db()
-    except Exception as exc:  # noqa: BLE001
-        log.error("readyz: %s", exc)
-        return PlainTextResponse("db unavailable", status_code=503)
-    return {"status": "ready"}
+    except Exception:
+        log.exception("readyz: db no disponible")
+        return JSONResponse({"status": "not_ready", "checks": {"db": "fail"}}, status_code=503)
+    return {"status": "ready", "checks": {"db": "ok"}}
 
 
 @app.api_route("/ping/{code}", methods=METHODS)
@@ -84,10 +87,10 @@ async def ping(request: Request, code: str, suffix: str = ""):
         return _text("not found", 404)
     action, exitstatus = parsed
 
-    rid = None
+    run_id = None
     if "rid" in request.query_params:
         try:
-            rid = uuid.UUID(request.query_params["rid"])
+            run_id = uuid.UUID(request.query_params["rid"])
         except ValueError:
             return _text("invalid url format", 400)
 
@@ -102,7 +105,7 @@ async def ping(request: Request, code: str, suffix: str = ""):
             request.method, request.headers.get("user-agent", ""), body, rid,
         )
     except Exception as exc:  # noqa: BLE001
-        log.error("record_ping falló: %s", exc)
+        log.exception("record_ping falló")
         return _text("service unavailable", 503)
 
     if result == db.NOT_FOUND:

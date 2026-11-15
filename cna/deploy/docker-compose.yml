@@ -1,3 +1,8 @@
+# Integracion de los microservicios con el monolito Healthchecks.
+# ESTADO: configuracion publicada como parte del diseño de integracion.
+# No fue ejecutada ni validada de extremo a extremo al momento de la entrega.
+# alerts-svc no se incluye porque su implementacion esta en desarrollo.
+
 services:
   checks-svc:
     build: ../services/checks-svc

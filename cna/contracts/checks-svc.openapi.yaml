@@ -2,8 +2,8 @@ openapi: 3.1.0
 info:
   title: checks-svc
   version: 1.0.0
- security:
-- ApiKeyAuth: [] 
+security:
+- ApiKeyAuth: []
 paths:
   /healthz:
     get:

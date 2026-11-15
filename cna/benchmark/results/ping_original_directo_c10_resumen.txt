@@ -1,0 +1,1 @@
+runs=5  rps=53.69  mean_ms=187.28  p95_ms=233.2  p99_ms=255.6  failed_total=0  non2xx_total=25000

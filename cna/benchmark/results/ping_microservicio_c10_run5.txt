@@ -14,7 +14,7 @@ Document Path:          /svc/ping/9db19da5-7f36-4e67-af88-e0a22f22e74b
 Document Length:        0 bytes
 
 Concurrency Level:      10
-Time taken for tests:   0.025 seconds
+Time taken for tests:   0.024 seconds
 Complete requests:      0
 Failed requests:        0
 Total transferred:      0 bytes

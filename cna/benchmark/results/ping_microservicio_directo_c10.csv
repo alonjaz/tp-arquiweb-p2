@@ -1,0 +1,6 @@
+label,run,n,c,rps,mean_ms,p95_ms,p99_ms,max_ms,failed,non2xx
+microservicio_directo,1,5000,10,167.85,59.575,299,735,2254,0,0
+microservicio_directo,2,5000,10,167.19,59.812,297,728,2562,0,0
+microservicio_directo,3,5000,10,166.56,60.037,267,731,2344,0,0
+microservicio_directo,4,5000,10,164.55,60.771,305,724,1837,0,0
+microservicio_directo,5,5000,10,165.02,60.598,300,748,2504,0,0

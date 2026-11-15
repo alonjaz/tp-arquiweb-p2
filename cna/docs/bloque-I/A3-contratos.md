@@ -4,7 +4,7 @@
 
 El TP original pide contratos **OpenAPI** (sincrónicos) y **AsyncAPI** (eventos). En esta implementación **AsyncAPI no aplica**, porque la arquitectura no usa broker ni mensajería asíncrona: la comunicación es síncrona por REST y el estado compartido se resuelve en la base común. Esta decisión está justificada en el **ADR-007**.
 
-Por lo tanto, los contratos del sistema son exclusivamente OpenAPI, uno por servicio, almacenados en `cna/contracts/`.
+Por lo tanto, los contratos de la arquitectura entregada son exclusivamente OpenAPI, uno por servicio, almacenados en `cna/contracts/`. En ese mismo directorio se incluye además un contrato AsyncAPI como diseño propuesto para trabajo futuro, documentado en la sección 8.
 
 ## 2. Contrato de checks-svc
 
@@ -114,3 +114,9 @@ Resultado esperado: `0 errors`. Salida guardada en `cna/docs/F5-E4-ping-svc-lint
 | checks-svc | `cna/contracts/checks-svc.openapi.yaml` | Publicado y validado |
 | ping-svc | `cna/contracts/ping-svc.openapi.yaml` | Publicado y validado (Spectral, 0 errores) |
 | alerts-svc | — | No expone API HTTP; es un proceso en segundo plano, por lo que no requiere contrato OpenAPI |
+
+## 8. Contrato de eventos (diseño propuesto, no implementado)
+
+El archivo `cna/contracts/asyncapi.yaml` documenta un contrato AsyncAPI 3.0.0 con el sobre común de evento y su política de versionado, pensado para una evolución futura del sistema hacia comunicación asíncrona.
+
+**No forma parte de la arquitectura entregada.** La implementación actual no utiliza broker ni mensajería: la comunicación entre servicios es síncrona por REST y el estado compartido se resuelve en la base común, según el **ADR-007**. El contrato de eventos queda registrado como insumo de diseño para el trabajo futuro mencionado en el A5.

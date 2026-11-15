@@ -1,0 +1,171 @@
+asyncapi: 3.0.0
+info:
+  title: Healthchecks CNA - eventos
+  version: 1.0.0
+  description: |
+    Eventos asíncronos del sistema. Todos usan el sobre común `EventEnvelope`.
+    Versionado: el campo `version` del sobre es mayor.menor; los subjects NATS
+    llevan el sufijo `.v1`. Un cambio incompatible publica en `.v2` en paralelo.
+servers:
+  broker:
+    host: nats-broker:4222
+    protocol: nats
+    description: NATS JetStream (red interna, sin exposición externa)
+
+channels:
+  pingReceived:
+    address: healthchecks.ping.received.v1
+    messages:
+      pingReceived: {$ref: '#/components/messages/PingReceived'}
+  checkStatusChanged:
+    address: healthchecks.check.status_changed.v1
+    messages:
+      checkStatusChanged: {$ref: '#/components/messages/CheckStatusChanged'}
+  checkCreated:
+    address: healthchecks.check.created.v1
+    messages:
+      checkCreated: {$ref: '#/components/messages/CheckCreated'}
+  checkDeleted:
+    address: healthchecks.check.deleted.v1
+    messages:
+      checkDeleted: {$ref: '#/components/messages/CheckDeleted'}
+  deadLetter:
+    address: healthchecks.dlq.v1
+    messages:
+      deadLetter: {$ref: '#/components/messages/CheckStatusChanged'}
+
+operations:
+  publishPingReceived:
+    action: send
+    channel: {$ref: '#/channels/pingReceived'}
+    summary: ping-svc publica cada ping registrado
+  publishCheckStatusChanged:
+    action: send
+    channel: {$ref: '#/channels/checkStatusChanged'}
+    summary: ping-svc publica al crear un flip (cambio de estado)
+  receiveCheckStatusChanged:
+    action: receive
+    channel: {$ref: '#/channels/checkStatusChanged'}
+    summary: alerts-svc consume cambios de estado para notificar
+  receiveCheckCreated:
+    action: receive
+    channel: {$ref: '#/channels/checkCreated'}
+    summary: consumidores interesados en altas de checks (checks-svc publica)
+  receiveCheckDeleted:
+    action: receive
+    channel: {$ref: '#/channels/checkDeleted'}
+    summary: consumidores interesados en bajas de checks (checks-svc publica)
+
+components:
+  messages:
+    PingReceived:
+      name: PingReceived
+      contentType: application/json
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - type: object
+            properties:
+              type: {const: healthchecks.ping.received}
+              payload: {$ref: '#/components/schemas/PingReceivedPayload'}
+      examples:
+        - payload:
+            event_id: 3f0c2b52-8c1e-4f0e-9d0a-1a2b3c4d5e6f
+            type: healthchecks.ping.received
+            version: '1.0'
+            occurred_at: '2026-11-15T14:03:22Z'
+            request_id: req-7d2a
+            payload:
+              check_code: 08e27489-57e1-477c-8017-77d358d36de1
+              action: success
+              exitstatus: null
+              n: 128
+              method: GET
+              remote_addr: 192.168.56.1
+    CheckStatusChanged:
+      name: CheckStatusChanged
+      contentType: application/json
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - type: object
+            properties:
+              type: {const: healthchecks.check.status_changed}
+              payload: {$ref: '#/components/schemas/StatusChangedPayload'}
+      examples:
+        - payload:
+            event_id: 9b1d7a10-2f3e-4c55-8a41-0e9f6c7d8a21
+            type: healthchecks.check.status_changed
+            version: '1.0'
+            occurred_at: '2026-11-15T14:03:22Z'
+            request_id: req-7d2a
+            payload:
+              check_code: 08e27489-57e1-477c-8017-77d358d36de1
+              old_status: down
+              new_status: up
+              reason: ''
+    CheckCreated:
+      name: CheckCreated
+      contentType: application/json
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - type: object
+            properties:
+              type: {const: healthchecks.check.created}
+              payload: {$ref: '#/components/schemas/CheckRefPayload'}
+    CheckDeleted:
+      name: CheckDeleted
+      contentType: application/json
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - type: object
+            properties:
+              type: {const: healthchecks.check.deleted}
+              payload: {$ref: '#/components/schemas/CheckRefPayload'}
+
+  schemas:
+    EventEnvelope:
+      type: object
+      required: [event_id, type, version, occurred_at, request_id, payload]
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          description: Clave de idempotencia; los consumidores descartan duplicados.
+        type: {type: string}
+        version:
+          type: string
+          pattern: '^[0-9]+\.[0-9]+$'
+        occurred_at:
+          type: string
+          format: date-time
+          description: ISO 8601 en UTC.
+        request_id:
+          type: string
+          description: Valor de X-Request-ID que originó el evento.
+        payload: {type: object}
+    PingReceivedPayload:
+      type: object
+      required: [check_code, action, n]
+      properties:
+        check_code: {type: string, format: uuid}
+        action: {type: string, enum: [success, start, fail, log, ign]}
+        exitstatus: {type: [integer, 'null'], minimum: 0, maximum: 255}
+        n: {type: integer, description: Contador n_pings del check.}
+        method: {type: string}
+        remote_addr: {type: [string, 'null']}
+    StatusChangedPayload:
+      type: object
+      required: [check_code, old_status, new_status]
+      properties:
+        check_code: {type: string, format: uuid}
+        old_status: {type: string, enum: [new, up, down, grace, paused]}
+        new_status: {type: string, enum: [new, up, down, grace, paused]}
+        reason: {type: string}
+    CheckRefPayload:
+      type: object
+      required: [check_code]
+      properties:
+        check_code: {type: string, format: uuid}

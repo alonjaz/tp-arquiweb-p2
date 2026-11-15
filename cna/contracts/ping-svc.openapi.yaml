@@ -1,0 +1,253 @@
+openapi: 3.1.0
+info:
+  title: ping-svc
+  version: 1.0.0
+  summary: Recepción de pings de Healthchecks (reemplaza /ping/<uuid> del monolito).
+  description: |
+    Microservicio que estrangula la ruta `/ping/<uuid>` de Healthchecks v4.0.
+    Actualiza `api_check` e inserta en `api_ping` / `api_flip` (PostgreSQL compartido).
+    El gateway publica la ruta como `/v2/ping/...` y elimina el prefijo `/v2`
+    antes de reenviar al servicio.
+  license:
+    name: BSD-3-Clause
+    identifier: BSD-3-Clause
+servers:
+  - url: https://api.healthchecks.arqweb.test/v2
+    description: Gateway (Nginx, TLS 1.3)
+  - url: http://127.0.0.1:8002
+    description: Servicio directo (solo pruebas locales)
+tags:
+  - name: ping
+  - name: ops
+
+paths:
+  /ping/{code}:
+    parameters:
+      - $ref: '#/components/parameters/Code'
+      - $ref: '#/components/parameters/Rid'
+      - $ref: '#/components/parameters/RequestId'
+    get:
+      operationId: pingSuccessGet
+      tags: [ping]
+      summary: Registra un ping de éxito
+      responses: &pingResponses
+        '200': {$ref: '#/components/responses/Ok'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+    head:
+      operationId: pingSuccessHead
+      tags: [ping]
+      summary: Igual que GET, sin cuerpo en la respuesta
+      responses: *pingResponses
+    post:
+      operationId: pingSuccessPost
+      tags: [ping]
+      summary: Ping de éxito con cuerpo opcional
+      requestBody: {$ref: '#/components/requestBodies/PingBody'}
+      responses: *pingResponses
+    put:
+      operationId: pingSuccessPut
+      tags: [ping]
+      summary: Ping de éxito con cuerpo opcional
+      requestBody: {$ref: '#/components/requestBodies/PingBody'}
+      responses: *pingResponses
+    options:
+      operationId: pingSuccessOptions
+      tags: [ping]
+      summary: Preflight CORS
+      responses: *pingResponses
+
+  /ping/{code}/{suffix}:
+    parameters:
+      - $ref: '#/components/parameters/Code'
+      - $ref: '#/components/parameters/Suffix'
+      - $ref: '#/components/parameters/Rid'
+      - $ref: '#/components/parameters/RequestId'
+    get:
+      operationId: pingSuffixGet
+      tags: [ping]
+      summary: Ping con acción (start, fail, log) o código de salida (0-255)
+      description: |
+        `start`, `fail` y `log` seleccionan la acción. Un entero 0-255 es el
+        exit status; un valor > 0 se registra como `fail`. Un valor > 255 devuelve 400.
+        Las variantes con barra final (`/ping/{code}/` y `/ping/{code}/{suffix}/`)
+        se comportan igual.
+      responses: *pingResponses
+    head:
+      operationId: pingSuffixHead
+      tags: [ping]
+      summary: Igual que GET, sin cuerpo en la respuesta
+      responses: *pingResponses
+    post:
+      operationId: pingSuffixPost
+      tags: [ping]
+      summary: Ping con acción y cuerpo opcional
+      requestBody: {$ref: '#/components/requestBodies/PingBody'}
+      responses: *pingResponses
+    put:
+      operationId: pingSuffixPut
+      tags: [ping]
+      summary: Ping con acción y cuerpo opcional
+      requestBody: {$ref: '#/components/requestBodies/PingBody'}
+      responses: *pingResponses
+    options:
+      operationId: pingSuffixOptions
+      tags: [ping]
+      summary: Preflight CORS
+      responses: *pingResponses
+
+  /healthz:
+    get:
+      operationId: healthz
+      tags: [ops]
+      summary: Liveness (proceso vivo)
+      responses:
+        '200':
+          description: Proceso vivo
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Status'}
+              examples:
+                ok: {value: {status: ok}}
+
+  /readyz:
+    get:
+      operationId: readyz
+      tags: [ops]
+      summary: Readiness (PostgreSQL responde)
+      responses:
+        '200':
+          description: Listo
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Status'}
+              examples:
+                ready: {value: {status: ready}}
+        '503':
+          description: Base de datos no disponible
+          content:
+            text/plain:
+              schema: {type: string}
+              examples:
+                down: {value: db unavailable}
+
+  /metrics:
+    get:
+      operationId: metrics
+      tags: [ops]
+      summary: Métricas Prometheus
+      description: |
+        Incluye `http_requests_total{service,method,route,status}` y
+        `http_request_duration_seconds` (histograma).
+      responses:
+        '200':
+          description: Formato de exposición Prometheus
+          content:
+            text/plain:
+              schema: {type: string}
+              examples:
+                sample:
+                  value: |
+                    # TYPE http_requests_total counter
+                    http_requests_total{service="ping-svc",method="GET",route="/ping/{code}",status="200"} 42
+
+components:
+  parameters:
+    Code:
+      name: code
+      in: path
+      required: true
+      description: UUID del check (api_check.code).
+      schema: {type: string, format: uuid}
+      example: 08e27489-57e1-477c-8017-77d358d36de1
+    Suffix:
+      name: suffix
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^(start|fail|log|[0-9]+)$'
+      examples:
+        start: {value: start}
+        fail: {value: fail}
+        exit2: {value: '2'}
+    Rid:
+      name: rid
+      in: query
+      required: false
+      description: UUID que correlaciona un `start` con su ping de fin (calcula duración).
+      schema: {type: string, format: uuid}
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      description: Se propaga y se devuelve; si falta o es inválido, el servicio genera uno.
+      schema: {type: string, pattern: '^[A-Za-z0-9._-]{1,100}$'}
+
+  headers:
+    X-Request-ID:
+      description: Identificador de correlación de la petición.
+      schema: {type: string}
+    Ping-Body-Limit:
+      description: Tamaño máximo del cuerpo almacenado, en bytes (PING_BODY_LIMIT).
+      schema: {type: string}
+    Cache-Control:
+      schema: {type: string}
+    Access-Control-Allow-Origin:
+      schema: {type: string}
+
+  requestBodies:
+    PingBody:
+      required: false
+      description: Cuerpo libre; se trunca a PING_BODY_LIMIT bytes (por defecto 10000).
+      content:
+        text/plain:
+          schema: {type: string}
+          examples:
+            log: {value: backup finished in 12s}
+
+  responses:
+    Ok:
+      description: Ping registrado
+      headers: &commonHeaders
+        X-Request-ID: {$ref: '#/components/headers/X-Request-ID'}
+        Ping-Body-Limit: {$ref: '#/components/headers/Ping-Body-Limit'}
+        Cache-Control: {$ref: '#/components/headers/Cache-Control'}
+        Access-Control-Allow-Origin: {$ref: '#/components/headers/Access-Control-Allow-Origin'}
+      content:
+        text/html:
+          schema: {type: string, const: 'OK'}
+          examples:
+            ok: {value: 'OK'}
+    BadRequest:
+      description: '`rid` inválido o exit status mayor que 255'
+      headers: *commonHeaders
+      content:
+        text/html:
+          schema: {type: string, const: 'invalid url format'}
+          examples:
+            bad: {value: 'invalid url format'}
+    NotFound:
+      description: UUID inválido, sufijo inválido o check inexistente
+      headers: *commonHeaders
+      content:
+        text/html:
+          schema: {type: string, const: 'not found'}
+          examples:
+            nf: {value: 'not found'}
+    Unavailable:
+      description: Error de base de datos
+      headers: *commonHeaders
+      content:
+        text/html:
+          schema: {type: string, const: 'service unavailable'}
+          examples:
+            down: {value: 'service unavailable'}
+
+  schemas:
+    Status:
+      type: object
+      required: [status]
+      properties:
+        status: {type: string, enum: [ok, ready]}

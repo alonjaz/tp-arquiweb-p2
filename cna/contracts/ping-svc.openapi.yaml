@@ -6,13 +6,13 @@ info:
   description: |
     Microservicio que estrangula la ruta `/ping/<uuid>` de Healthchecks v4.0.
     Actualiza `api_check` e inserta en `api_ping` / `api_flip` (PostgreSQL compartido).
-    El gateway publica la ruta como `/v2/ping/...` y elimina el prefijo `/v2`
-    antes de reenviar al servicio.
+    Por el patrón Strangler Fig la ruta es idéntica a la del monolito: el cliente
+    no distingue si lo atiende Healthchecks o este servicio.
   license:
     name: BSD-3-Clause
     identifier: BSD-3-Clause
 servers:
-  - url: https://api.healthchecks.arqweb.test/v2
+  - url: https://healthchecks.arqweb.test
     description: Gateway (Nginx, TLS 1.3)
   - url: http://127.0.0.1:8002
     description: Servicio directo (solo pruebas locales)

@@ -1,0 +1,18 @@
+(node:216888) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+/home/user/hc/tp-arquiweb-p2/cna/contracts/ping-svc.openapi.yaml
+  2:6   warning  info-contact           Info object must have "contact" object.                        info
+  29:9  warning  operation-description  Operation "description" must be present and non-empty string.  paths./ping/{code}.get
+ 38:10  warning  operation-description  Operation "description" must be present and non-empty string.  paths./ping/{code}.head
+ 43:10  warning  operation-description  Operation "description" must be present and non-empty string.  paths./ping/{code}.post
+  49:9  warning  operation-description  Operation "description" must be present and non-empty string.  paths./ping/{code}.put
+ 55:13  warning  operation-description  Operation "description" must be present and non-empty string.  paths./ping/{code}.options
+ 77:10  warning  operation-description  Operation "description" must be present and non-empty string.  paths./ping/{code}/{suffix}.head
+ 82:10  warning  operation-description  Operation "description" must be present and non-empty string.  paths./ping/{code}/{suffix}.post
+  88:9  warning  operation-description  Operation "description" must be present and non-empty string.  paths./ping/{code}/{suffix}.put
+ 94:13  warning  operation-description  Operation "description" must be present and non-empty string.  paths./ping/{code}/{suffix}.options
+ 101:9  warning  operation-description  Operation "description" must be present and non-empty string.  paths./healthz.get
+ 115:9  warning  operation-description  Operation "description" must be present and non-empty string.  paths./readyz.get
+
+✖ 12 problems (0 errors, 12 warnings, 0 infos, 0 hints)

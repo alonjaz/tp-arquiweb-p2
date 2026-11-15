@@ -1,0 +1,56 @@
+services:
+  checks-svc:
+    build: ../services/checks-svc
+    image: checks-svc:1.0.0
+    container_name: checks-svc
+    environment:
+      DB_HOST: host.docker.internal
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      PORT: 8001
+      SERVICE_NAME: checks-svc
+      LOG_LEVEL: INFO
+      SITE_ROOT: http://localhost
+      PING_ENDPOINT: http://localhost/ping
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 256m
+    cpus: 0.5
+    restart: unless-stopped
+
+  ping-svc:
+    build: ../services/ping-svc
+    image: ping-svc:1.0.0
+    container_name: ping-svc
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@host.docker.internal:5432/${DB_NAME}
+      HOST: 0.0.0.0
+      PORT: 8002
+      WEB_CONCURRENCY: 2
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    read_only: true
+    tmpfs:
+      - /prom
+    mem_limit: 256m
+    cpus: 0.5
+    restart: unless-stopped
+
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: gateway
+    ports:
+      - 80:80
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      - checks-svc
+      - ping-svc
+    restart: unless-stopped

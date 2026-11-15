@@ -51,4 +51,4 @@ Las decisiones de diseño están documentadas en [`cna/docs/bloque-I/A2-adr.md`]
 
 - `main` — integración de los microservicios
 - `healthchecks-original` — código del monolito, solo lectura
-- `feat/checks-svc`, `feat/ping-svc`, `feat/alerts-svc` — ramas de trabajo
+- `feat/checks-svc`, `feat/ping-svc`, `feat/alerts-svc` — ramas de trabajo.

@@ -2,6 +2,8 @@ openapi: 3.1.0
 info:
   title: checks-svc
   version: 1.0.0
+ security:
+- ApiKeyAuth: [] 
 paths:
   /healthz:
     get:
@@ -185,6 +187,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Clave de API del proyecto, de 32 caracteres, validada contra accounts_project.api_key
   schemas:
     CheckIn:
       properties:

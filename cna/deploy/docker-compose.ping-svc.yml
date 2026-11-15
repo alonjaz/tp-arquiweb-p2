@@ -1,0 +1,16 @@
+# Fragmento de ping-svc (Sonia). Quien arma el docker-compose.yml final
+# (Compañero/a 2) debe copiar este bloque dentro de "services:".
+services:
+  ping-svc:
+    build: ../ping-svc
+    image: ping-svc:1.0.0
+    container_name: ping-svc
+    env_file: ../ping-svc/.env        # NO versionado; ver .env.example
+    ports:
+      - "127.0.0.1:8001:8000"          # solo loopback; Nginx es la única entrada
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # alcanzar PostgreSQL de la VM
+    read_only: true
+    mem_limit: 256m
+    cpus: 1.0
+    restart: unless-stopped

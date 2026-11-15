@@ -23,23 +23,17 @@ cna/
 └── docs/            Bloque I (diseño), informe final y evidencias
     └── bloque-I/    A1 análisis, A2 ADR, A3 contratos, A4 diagramas, A5 riesgos
 ```
-
-## Despliegue en un comando
+## Despliegue
 
 Requisitos: Docker Engine con el plugin Compose, y PostgreSQL con la base de Healthchecks corriendo en la máquina anfitriona.
-
 ```bash
 cd cna/deploy
 cp .env.example .env     # completar las credenciales de la base
 docker compose up -d
-```
-
-Verificar que los servicios quedaron saludables:
-
-```bash
 docker compose ps
 curl -s http://localhost/healthz
 ```
+> Estado de la integración: el archivo docker-compose.yml levanta checks-svc, ping-svc y el gateway Nginx. El servicio alerts-svc está en desarrollo y todavía no se incluye. La integración no fue validada de extremo a extremo al momento de la entrega.
 
 ## Arquitectura
 

@@ -39,21 +39,78 @@ Esquema `ApiKeyAuth`: clave de API de 32 caracteres enviada en el header `X-Api-
 
 La operación DELETE devuelve `{"ok": true}` en lugar del objeto del check eliminado, que es lo que devuelve el monolito. Es la única diferencia de contrato respecto del original y queda declarada aquí y en el README del servicio.
 
-## 3. Versionado
+## 3. Contrato de ping-svc
 
-- **Versión de la ruta:** se mantiene `/api/v3/` heredada del monolito. El patrón Strangler Fig exige que el contrato expuesto al cliente sea idéntico al original, de modo que el cliente no distinga si lo atiende el monolito o el microservicio.
-- **Versión del contrato:** se usa versionado semántico en `info.version`. Los agregados compatibles suben la versión menor; un cambio que rompa compatibilidad obligaría a publicar una nueva versión de ruta (`/api/v4/`) y a mantener ambas durante la transición.
+- **Archivo:** `cna/contracts/ping-svc.openapi.yaml`
+- **Especificación:** OpenAPI 3.1.0
+- **Versión del contrato:** 1.0.0
+- **Generación:** redactado a mano. FastAPI no describiría con fidelidad las respuestas reales (texto `OK`, `not found`, `invalid url format` con tipo `text/html`) ni las cinco variantes de método y las rutas con barra final, que se declaran con `add_api_route`.
 
-## 4. F5-E4: Validación del contrato
+### Operaciones expuestas
 
-El contrato se carga sin errores en un validador de OpenAPI. La etiqueta **OAS 3.1** confirma la especificación, el botón **Authorize** confirma que el esquema de autenticación fue reconocido, y el candado en cada operación confirma que la seguridad se aplica a todos los endpoints.
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET, HEAD, POST, PUT, OPTIONS | `/ping/{code}` | Registra un ping de éxito para el check |
+| GET, HEAD, POST, PUT, OPTIONS | `/ping/{code}/{suffix}` | Acción `start`, `fail`, `log` o exit status 0-255 |
+| GET | `/healthz` | Liveness: el proceso responde |
+| GET | `/readyz` | Readiness: ejecuta `SELECT 1` en PostgreSQL (503 si falla) |
+| GET | `/metrics` | Métricas Prometheus (`http_requests_total`, `http_request_duration_seconds`) |
+
+Las variantes con barra final (`/ping/{code}/` y `/ping/{code}/{suffix}/`) se comportan igual y se documentan en la descripción de la operación.
+
+### Parámetros y respuestas
+
+- `code` (ruta): UUID del check. `suffix` (ruta): `start`, `fail`, `log` o entero.
+- `rid` (query, opcional): UUID que correlaciona un `start` con su ping de fin.
+- `X-Request-ID` (header, opcional): se propaga y se devuelve; si falta o es inválido, el servicio genera uno.
+- Cuerpo opcional (POST/PUT), truncado a `PING_BODY_LIMIT` bytes (10000 por defecto).
+- Códigos: `200` (`OK`), `400` (`rid` inválido o exit status > 255), `404` (UUID o sufijo inválido, o check inexistente), `503` (error de base de datos).
+- Cabeceras de respuesta: `X-Request-ID`, `Ping-Body-Limit`, `Cache-Control` y `Access-Control-Allow-Origin`, iguales a las del original.
+
+### Autenticación
+
+No tiene esquema de seguridad, igual que el monolito: el UUID del check actúa como secreto de acceso. No hay clave de API.
+
+### Desviaciones conocidas
+
+Declaradas también en el README del servicio:
+
+- No implementa el ping por slug (`/ping/<key>/<slug>`, `?create=1`).
+- No almacena cuerpos en S3: siempre se guardan en `api_ping.body_raw`.
+- No aplica límites de tasa del original.
+- El límite de cuerpo por defecto es 10000 bytes (`PING_BODY_LIMIT`).
+
+## 4. Contrato de alerts-svc
+
+`alerts-svc` ejecuta el proceso `sendalerts` en segundo plano, sin rutas HTTP de negocio. No requiere contrato OpenAPI propio.
+
+## 5. Versionado
+
+- **Versión de la ruta:** se mantienen las rutas heredadas del monolito (`/api/v3/` en `checks-svc`; `/ping/{code}` en `ping-svc`, que no tiene prefijo de versión). El patrón Strangler Fig exige que el contrato expuesto al cliente sea idéntico al original, de modo que el cliente no distinga si lo atiende el monolito o el microservicio.
+- **Versión del contrato:** se usa versionado semántico en `info.version`. Los agregados compatibles suben la versión menor; un cambio que rompa compatibilidad obligaría a publicar una nueva versión de ruta (por ejemplo `/api/v4/`) y a mantener ambas durante la transición.
+
+## 6. F5-E4: Validación de los contratos
+
+**checks-svc.** El contrato se carga sin errores en Swagger Editor. La etiqueta **OAS 3.1** confirma la especificación, el botón **Authorize** confirma que el esquema de autenticación fue reconocido, y el candado en cada operación confirma que la seguridad se aplica a todos los endpoints.
 
 <img width="992" height="748" alt="F5-E4: contrato de checks-svc validado sin errores en Swagger Editor" src="https://github.com/user-attachments/assets/6cf7e05b-0f0f-4669-925a-032f35b6e3b2" />
 
-## 5. Estado de los contratos del sistema
+**ping-svc.** Se validó con Spectral (conjunto de reglas `spectral:oas`):
+
+```bash
+cd cna/contracts
+npx --yes @stoplight/spectral-cli lint ping-svc.openapi.yaml
+```
+
+Resultado esperado: `0 errors`. Salida guardada en `cna/docs/F5-E4-ping-svc-lint.txt`.
+
+<img width="1028" height="338" alt="F5-E4-ping-svc-lint" src="https://github.com/user-attachments/assets/96399961-89d3-4a04-a6fb-42662e5d3be7" />
+
+
+## 7. Estado de los contratos del sistema
 
 | Servicio | Contrato | Estado |
 |----------|----------|--------|
 | checks-svc | `cna/contracts/checks-svc.openapi.yaml` | Publicado y validado |
-| ping-svc | `cna/contracts/ping-svc.openapi.yaml` | Pendiente de publicar por el responsable del servicio |
+| ping-svc | `cna/contracts/ping-svc.openapi.yaml` | Publicado y validado (Spectral, 0 errores) |
 | alerts-svc | — | No expone API HTTP; es un proceso en segundo plano, por lo que no requiere contrato OpenAPI |
